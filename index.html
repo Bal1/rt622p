@@ -1,0 +1,182 @@
+<html lang="en">
+<head>
+    <title>rt622p frequency editor</title>
+    <style>
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+        }
+
+        input.f {
+            width: 0.1px;
+            height: 0.1px;
+            opacity: 0;
+            overflow: hidden;
+            position: absolute;
+            z-index: -1;
+        }
+
+        .btn {
+            width: 180px;
+            height: 50px;
+            border-radius: 4px;
+            text-align: center;
+            cursor: pointer;
+            display: block;
+            font: 14px/50px Tahoma;
+            transition: all 0.18s ease-in-out;
+            border: 1px solid #333;
+            color: #333;
+        }
+
+        #freq {
+            margin-top: 20px;
+        }
+        #freq div {
+            margin-bottom: 10px;
+        }
+        #freq span {
+            display: inline-block;
+            width: 30px;
+        }
+        #freq input {
+            width: 100px;
+        }
+    </style>
+</head>
+<body>
+    <label for="f" class="btn">Select file</label>
+    <input type="file" id="f" class="f">
+    <div id="freq">
+
+    </div>
+
+    <script>
+        const startFreq = 400424960;
+        const steps = [
+            160,
+            10,
+            40960,
+            2560,
+            10485760,
+            655360
+        ];
+        const freqDiv = document.getElementById('freq');
+        const exportBtn = document.createElement('button');
+        exportBtn.innerHTML = 'Export';
+        exportBtn.classList = 'btn';
+        exportBtn.onclick = exportData;
+        let fileContent = [];
+
+        String.prototype.replaceAt = function(index, replacement) {
+            return this.substring(0, index) + replacement + this.substring(index + replacement.length);
+        }
+
+        function parseData(data) {
+            let info = data.split(/\r?\n/);
+            fileContent = info;
+
+            if (info[0] !== '[M31_Analog_Redio]') {
+                alert('Invalid file');
+                return;
+            }
+            freqDiv.innerHTML = '';
+
+            for (let i = 1; i < info.length - 3; i++) {
+                let hex = info[i].replace(/ /g, '');
+                addRow(i, hex2freq(hex.substr(8, 6)), hex2freq(hex.substr(16, 6)));
+            }
+            addExportBtn();
+        }
+
+        function addRow(id, freq1, freq2) {
+            let row = document.createElement('div');
+            row.innerHTML = '<span>' +  id + '</span> <input type="text" name="' + id + '-1" value="' + freq1 + '"/> - <input type="text" name="' + id + '-2" value="' + freq2 + '"/>';
+            freqDiv.appendChild(row);
+        }
+
+        function addExportBtn() {
+            freqDiv.appendChild(exportBtn);
+        }
+
+        function exportData() {
+            freqDiv.querySelectorAll('div').forEach(function (row) {
+                let id = row.querySelector('span').innerHTML;
+                let freq1 = row.querySelector('input[name="' + id + '-1"]').value;
+                let freq2 = row.querySelector('input[name="' + id + '-2"]').value;
+                let hex1 = freq2hex(freq1);
+                let hex2 = freq2hex(freq2);
+
+                fileContent[id] = fileContent[id].replaceAt(12, hex1);
+                fileContent[id] = fileContent[id].replaceAt(24, hex2);
+            });
+            let f = new Blob([fileContent.join('\r\n')], {type: 'text/plain'});
+            let url = window.URL || window.webkitURL;
+
+            let a = document.createElement("a");
+            a.download = 'export.dat';
+            a.href = url.createObjectURL(f);
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        }
+
+        function freq2hex(freq) {
+            let hex = [];
+            freq -= startFreq;
+            let sortedSteps = [...steps].sort((a, b) => b -a);
+
+            for (let i = 0; i < sortedSteps.length; i++) {
+                let stepPos = steps.indexOf(sortedSteps[i]);
+
+                let int = Math.floor(freq / sortedSteps[i]);
+                freq -= int * sortedSteps[i];
+
+                if (stepPos === 4) {
+                    int += 6;
+                }
+
+                if (stepPos === 5) {
+                    int += 3;
+                }
+                hex[stepPos] = int.toString(16);
+            }
+
+            return hex.join('').match(/.{1,2}/g).join(' ').toUpperCase();
+        }
+
+        function hex2freq(hex) {
+            let clearHex = hex.replace(/ /g, '');
+
+            if (clearHex.length !== 6) {
+                return 'Invalid hex';
+            }
+            let freq = startFreq;
+
+            for (let i = 0; i < clearHex.length; i++) {
+                let int = parseInt(clearHex[i], 16);
+
+                if (i === 4) {
+                    int -= 6;
+                }
+
+                if (i === 5) {
+                    int -= 3;
+                }
+                freq += int * steps[i];
+            }
+
+            return freq;
+        }
+
+        let fileInput = document.getElementById('f');
+
+        fileInput.onchange = function (e) {
+            let reader = new FileReader();
+            reader.onload = function () {
+                parseData(reader.result);
+            };
+            reader.readAsText(fileInput.files[0]);
+        }
+    </script>
+</body>
+</html>
