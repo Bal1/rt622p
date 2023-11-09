@@ -91,36 +91,28 @@
 
             for (let i = 1; i < info.length - 3; i++) {
                 let hex = info[i].replace(/ /g, '');
-                
-                let scan = '1';
-                let scanhex = hex.substr(32, 1);
-                if (scanhex == 'F') {
-                    scan = '1';
-
-                } else if (scanhex == 'E') {
-                    scan = '0';
-                }
-
-
+                let scan = hex.substr(32, 1) === 'F'; // F, E values
                 let pwr = 'L';
                 let width = 'N'
-                let pwrwidthhex = hex.substr(33, 1);
-                if (pwrwidthhex == '3') {
-                    pwr = 'L';
-                    width = 'W';
-                } else if (pwrwidthhex == '7') {
-                    pwr = 'L';
-                    width = 'N';
-                } else if (pwrwidthhex == 'B') {
-                    pwr = 'H';
-                    width = 'W';
-                }  else if (pwrwidthhex == 'B') {
-                    pwr = 'H';
-                    width = 'N';
+
+                switch (hex.substr(33, 1)) {
+                    case '3':
+                        pwr = 'L';
+                        width = 'W';
+                        break;
+                    case '7':
+                        pwr = 'L';
+                        width = 'N';
+                        break;
+                    case 'B':
+                        pwr = 'H';
+                        width = 'W';
+                        break;
+                    case 'F':
+                        pwr = 'H';
+                        width = 'N';
+                        break;
                 }
-
-
-
                 addRow(i, hex2freq(hex.substr(8, 6)), hex2freq(hex.substr(16, 6)), scan, pwr, width );
             }
             addExportBtn();
@@ -128,7 +120,12 @@
 
         function addRow(id, freq1, freq2, scan, pwr, width) {
             let row = document.createElement('div');
-            row.innerHTML = '<span>' +  id + '</span> <input type="text" name="' + id + '-1" value="' + freq1 + '"/> - <input type="text" name="' + id + '-2" value="' + freq2 + '"/>  - <input type="text" name="' + id + '-3" value="' + scan + '"/> - <input type="text" name="' + id + '-4" value="' + pwr + '"/>   - <input type="text" name="' + id + '-5" value="' + width + '"/>' ;
+            row.innerHTML = '<span>' +  id + '</span> ' +
+                '<input type="text" name="' + id + '-1" value="' + freq1 + '"/> - ' +
+                '<input type="text" name="' + id + '-2" value="' + freq2 + '"/>  - ' +
+                '<select name="' + id + '-3"><option value="1" ' + (scan ? 'selected' : '') + '>Enabled</option><option value="0" ' + (!scan ? 'selected' : '') + '>Disabled</option></select> - ' +
+                '<select name="' + id + '-4"><option value="H" ' + (pwr === 'H' ? 'selected' : '') + '>High</option><option value="L" ' + (pwr === 'L' ? 'selected' : '') + '>Low</option></select> - ' +
+                '<select name="' + id + '-5"><option value="W" ' + (width === 'W' ? 'selected' : '') + '>Wide</option><option value="N" ' + (width === 'N' ? 'selected' : '') + '>Narrow</option></select>';
             freqDiv.appendChild(row);
         }
 
@@ -141,36 +138,24 @@
                 let id = row.querySelector('span').innerHTML;
                 let freq1 = row.querySelector('input[name="' + id + '-1"]').value;
                 let freq2 = row.querySelector('input[name="' + id + '-2"]').value;
-                let scan = row.querySelector('input[name="' + id + '-3"]').value;
-                let pwr = row.querySelector('input[name="' + id + '-4"]').value;
-                let width = row.querySelector('input[name="' + id + '-5"]').value;
-                let hex1 = freq2hex(freq1);
-                let hex2 = freq2hex(freq2);
-                
-                let scanhex = 'F';
-                if (scan == '1') {
-                    scanhex = 'F';
+                let scan = row.querySelector('select[name="' + id + '-3"]').value;
+                let pwr = row.querySelector('select[name="' + id + '-4"]').value;
+                let width = row.querySelector('select[name="' + id + '-5"]').value;
+                let powerWidthHex = '7'
 
-                } else if (scan == '0') {
-                    scanhex = 'E';
-                } 
-
-                let pwrwidthhex = '7'
-
-                if (pwr == 'L' && width == 'W') {
-                    pwrwidthhex = '3'
-                } else if (pwr == 'L' && width == 'N') {
-                    pwrwidthhex = '7'
-                } else if (pwr == 'H' && width == 'W') {
-                    pwrwidthhex = 'B'
-                }  else if (pwr == 'H' && width == 'N') {
-                    pwrwidthhex = 'F'
+                if (pwr === 'L' && width === 'W') {
+                    powerWidthHex = '3'
+                } else if (pwr === 'L' && width === 'N') {
+                    powerWidthHex = '7'
+                } else if (pwr === 'H' && width === 'W') {
+                    powerWidthHex = 'B'
+                }  else if (pwr === 'H' && width === 'N') {
+                    powerWidthHex = 'F'
                 }
-
-                fileContent[id] = fileContent[id].replaceAt(12, hex1);
-                fileContent[id] = fileContent[id].replaceAt(24, hex2);
-                fileContent[id] = fileContent[id].replaceAt(48, scanhex);
-                fileContent[id] = fileContent[id].replaceAt(49, pwrwidthhex);
+                fileContent[id] = fileContent[id].replaceAt(12, freq2hex(freq1));
+                fileContent[id] = fileContent[id].replaceAt(24, freq2hex(freq2));
+                fileContent[id] = fileContent[id].replaceAt(48, scan === '1' ? 'F' : 'E');
+                fileContent[id] = fileContent[id].replaceAt(49, powerWidthHex);
             });
             let f = new Blob([fileContent.join('\r\n')], {type: 'text/plain'});
             let url = window.URL || window.webkitURL;
