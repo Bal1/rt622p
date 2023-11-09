@@ -53,6 +53,7 @@
     </pre>
     <label for="f" class="btn">Select file</label>
     <input type="file" id="f" class="f">
+    RX - TX - SCAN - POWER - WIDTH
     <div id="freq">
 
     </div>
@@ -90,14 +91,44 @@
 
             for (let i = 1; i < info.length - 3; i++) {
                 let hex = info[i].replace(/ /g, '');
-                addRow(i, hex2freq(hex.substr(8, 6)), hex2freq(hex.substr(16, 6)));
+                
+                let scan = '1';
+                let scanhex = hex.substr(32, 1);
+                if (scanhex == 'F') {
+                    scan = '1';
+
+                } else if (scanhex == 'E') {
+                    scan = '0';
+                }
+
+
+                let pwr = 'L';
+                let width = 'N'
+                let pwrwidthhex = hex.substr(33, 1);
+                if (pwrwidthhex == '3') {
+                    pwr = 'L';
+                    width = 'W';
+                } else if (pwrwidthhex == '7') {
+                    pwr = 'L';
+                    width = 'N';
+                } else if (pwrwidthhex == 'B') {
+                    pwr = 'H';
+                    width = 'W';
+                }  else if (pwrwidthhex == 'B') {
+                    pwr = 'H';
+                    width = 'N';
+                }
+
+
+
+                addRow(i, hex2freq(hex.substr(8, 6)), hex2freq(hex.substr(16, 6)), scan, pwr, width );
             }
             addExportBtn();
         }
 
-        function addRow(id, freq1, freq2) {
+        function addRow(id, freq1, freq2, scan, pwr, width) {
             let row = document.createElement('div');
-            row.innerHTML = '<span>' +  id + '</span> <input type="text" name="' + id + '-1" value="' + freq1 + '"/> - <input type="text" name="' + id + '-2" value="' + freq2 + '"/>';
+            row.innerHTML = '<span>' +  id + '</span> <input type="text" name="' + id + '-1" value="' + freq1 + '"/> - <input type="text" name="' + id + '-2" value="' + freq2 + '"/>  - <input type="text" name="' + id + '-3" value="' + scan + '"/> - <input type="text" name="' + id + '-4" value="' + pwr + '"/>   - <input type="text" name="' + id + '-5" value="' + width + '"/>' ;
             freqDiv.appendChild(row);
         }
 
@@ -110,11 +141,36 @@
                 let id = row.querySelector('span').innerHTML;
                 let freq1 = row.querySelector('input[name="' + id + '-1"]').value;
                 let freq2 = row.querySelector('input[name="' + id + '-2"]').value;
+                let scan = row.querySelector('input[name="' + id + '-3"]').value;
+                let pwr = row.querySelector('input[name="' + id + '-4"]').value;
+                let width = row.querySelector('input[name="' + id + '-5"]').value;
                 let hex1 = freq2hex(freq1);
                 let hex2 = freq2hex(freq2);
+                
+                let scanhex = 'F';
+                if (scan == '1') {
+                    scanhex = 'F';
+
+                } else if (scan == '0') {
+                    scanhex = 'E';
+                } 
+
+                let pwrwidthhex = '7'
+
+                if (pwr == 'L' && width == 'W') {
+                    pwrwidthhex = '3'
+                } else if (pwr == 'L' && width == 'N') {
+                    pwrwidthhex = '7'
+                } else if (pwr == 'H' && width == 'W') {
+                    pwrwidthhex = 'B'
+                }  else if (pwr == 'H' && width == 'N') {
+                    pwrwidthhex = 'F'
+                }
 
                 fileContent[id] = fileContent[id].replaceAt(12, hex1);
                 fileContent[id] = fileContent[id].replaceAt(24, hex2);
+                fileContent[id] = fileContent[id].replaceAt(48, scanhex);
+                fileContent[id] = fileContent[id].replaceAt(49, pwrwidthhex);
             });
             let f = new Blob([fileContent.join('\r\n')], {type: 'text/plain'});
             let url = window.URL || window.webkitURL;
